@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+
+# SvelteKit / Build / Vite
+.svelte-kit/
+build/
+dist/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Environment Variables (MUUUY SENSIBLE - ¡Nunca subir a Git!)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Cloudflare Wrangler
+.wrangler/
+
+# Supabase Local
+supabase/.temp/
+supabase/.branch/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Bases de datos y archivos SQL (Dumps, SQLite, etc.)
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+*.sql
+# Si usas migraciones de Supabase y quieres subirlas a Git, descomenta la siguiente línea:
+# !supabase/migrations/*.sql
