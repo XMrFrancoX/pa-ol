@@ -17,6 +17,7 @@
 		delivered: 'Entregado',
 		returned: 'Devuelto'
 	};
+	$: isProfesor = data.profile?.role === 'profesor';
 </script>
 
 <svelte:head><title>Panel — Inventario Pañol</title></svelte:head>
@@ -42,12 +43,14 @@
 		<div class="stat-value">{fmt(stats.totalStockQty)}</div>
 		<div class="stat-sub">unidades en total</div>
 	</div>
+	{#if !isProfesor}
 	<div class="stat-card" style="--accent-color: var(--accent)">
 		<div class="stat-icon"><i class="ph ph-currency-circle-dollar"></i></div>
 		<div class="stat-label">{$_('dashboard.inventoryValue')}</div>
 		<div class="stat-value number-mono" style="font-size:1.4rem">{fmtMoney(stats.totalValuation)}</div>
 		<div class="stat-sub">valorización PPP</div>
 	</div>
+	{/if}
 	<div class="stat-card" style="--accent-color: var(--warning)">
 		<div class="stat-icon"><i class="ph ph-shopping-cart"></i></div>
 		<div class="stat-label">{$_('dashboard.pendingOrders')}</div>

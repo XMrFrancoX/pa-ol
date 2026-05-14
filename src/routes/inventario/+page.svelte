@@ -27,6 +27,12 @@
 	function toggleDrilldown(sku) {
 		drilldownSku = drilldownSku === sku ? null : sku;
 	}
+	let selectedMat = null;
+	function selectMat(mat) {
+		selectedMat = mat;
+	}
+	function closeSelected() { selectedMat = null; }
+
 	function getTotalStock(mat) {
 		return mat.stock_by_location?.reduce((s, r) => s + (r.quantity || 0), 0) ?? 0;
 	}
@@ -35,15 +41,16 @@
 	let showModal = false;
 	let editingMat = null;
 	let form = { sku: '', name: '', technical_spec: '', unit_of_measure: 'unidades', last_purchase_price: '', image_url: '' };
+	let matStock = []; // [{ location_id, quantity }]
 	let imageFile = null;
 	let saving = false;
-
 	const units = ['unidades', 'metros', 'packs', 'gramos', 'litros', 'pares'];
 
 	function openNew() {
 		editingMat = null;
 		imageFile = null;
 		form = { sku: '', name: '', technical_spec: '', unit_of_measure: 'unidades', last_purchase_price: '', image_url: '' };
+		matStock = [{ location_id: '', quantity: 0 }];
 		showModal = true;
 	}
 	function openEdit(mat) {
@@ -57,6 +64,8 @@
 			last_purchase_price: mat.last_purchase_price ?? '',
 			image_url: mat.image_url ?? ''
 		};
+		matStock = mat.stock_by_location?.map(s => ({ location_id: s.location_id, quantity: s.quantity })) || [];
+		if (matStock.length === 0) matStock = [{ location_id: '', quantity: 0 }];
 		showModal = true;
 	}
 	function closeModal() { showModal = false; }
@@ -103,14 +112,27 @@
 		} else {
 			({ error } = await supabase.from('materials').insert(payload));
 		}
-		saving = false;
+
 		if (error) {
 			toast.error('Error al guardar: ' + error.message);
-		} else {
-			toast.success(editingMat ? 'Material actualizado' : 'Material creado');
-			closeModal();
-			invalidateAll();
+			saving = false;
+			return;
 		}
+
+		// Save stock by location
+		for (const s of matStock) {
+			if (!s.location_id) continue;
+			await supabase.from('stock_by_location').upsert({
+				material_sku: form.sku.trim().toUpperCase(),
+				location_id: s.location_id,
+				quantity: Number(s.quantity)
+			}, { onConflict: 'material_sku,location_id' });
+		}
+
+		toast.success(editingMat ? 'Material actualizado' : 'Material creado');
+		saving = false;
+		closeModal();
+		invalidateAll();
 	}
 
 	async function deleteMaterial(sku) {
@@ -146,6 +168,7 @@
 
 	// Active tab
 	let tab = 'materials'; // 'materials' | 'locations' | 'valuation'
+	$: isProfesor = data.profile?.role === 'profesor';
 </script>
 
 <svelte:head><title>Inventario — Pañol</title></svelte:head>
@@ -162,6 +185,7 @@
 </div>
 
 <!-- Valuation Banner -->
+{#if !isProfesor}
 <div class="valuation-banner mb-6">
 	<div class="vb-label"><i class="ph ph-currency-circle-dollar"></i> {$_('inventory.totalValuation')}</div>
 	<div class="vb-value">
@@ -169,6 +193,7 @@
 	</div>
 	<div class="vb-sub">calculado con PPP (Precio Promedio Ponderado)</div>
 </div>
+{/if}
 
 <!-- Tabs -->
 <div class="tabs mb-6">
@@ -199,16 +224,19 @@
 					<th>{$_('inventory.sku')}</th>
 					<th>{$_('inventory.componentName')}</th>
 					<th>{$_('inventory.unitOfMeasure')}</th>
+					<th>{$_('inventory.location')}</th>
 					<th style="text-align:right">{$_('inventory.totalStock')}</th>
-					<th style="text-align:right">{$_('inventory.avgCost')}</th>
-					<th style="text-align:right">Valorización</th>
+					{#if !isProfesor}
+						<th style="text-align:right">{$_('inventory.avgCost')}</th>
+						<th style="text-align:right">Valorización</th>
+					{/if}
 					<th></th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each materials as mat (mat.sku)}
 					{@const totalQty = getTotalStock(mat)}
-					<tr>
+					<tr class="clickable-row" class:selected={selectedMat?.sku === mat.sku} on:click={() => selectMat(mat)}>
 						<td>
 							{#if mat.image_url}
 								<img src={mat.image_url} alt={mat.name} class="mat-thumb" />
@@ -224,29 +252,37 @@
 							{/if}
 						</td>
 						<td class="td-muted">{mat.unit_of_measure}</td>
+						<td class="td-muted text-xs">
+							{mat.stock_by_location?.[0]?.locations?.name ?? '—'}
+							{#if (mat.stock_by_location?.length ?? 0) > 1}
+								<span class="text-primary-light">(+{mat.stock_by_location.length - 1})</span>
+							{/if}
+						</td>
 						<td style="text-align:right">
 							<button
 								class="stock-total-btn"
 								class:has-stock={totalQty > 0}
-								on:click={() => toggleDrilldown(mat.sku)}
+								on:click|stopPropagation={() => toggleDrilldown(mat.sku)}
 							>
 								<span class="font-semibold">{fmt(totalQty)}</span>
 								<span class="dd-arrow">{drilldownSku === mat.sku ? '▲' : '▼'}</span>
 							</button>
 						</td>
-						<td style="text-align:right" class="number-mono">{fmtMoney(mat.avg_cost)}</td>
-						<td style="text-align:right" class="number-mono text-sm">{fmtMoney(totalQty * (mat.avg_cost ?? 0))}</td>
+						{#if !isProfesor}
+							<td style="text-align:right" class="number-mono">{fmtMoney(mat.avg_cost)}</td>
+							<td style="text-align:right" class="number-mono text-sm">{fmtMoney(totalQty * (mat.avg_cost ?? 0))}</td>
+						{/if}
 						<td>
 							<div class="flex gap-2 justify-end">
-								<button class="btn btn-ghost btn-sm btn-icon" on:click={() => openEdit(mat)} title="Editar"><i class="ph ph-pencil-simple"></i></button>
-								<button class="btn btn-ghost btn-sm btn-icon" on:click={() => deleteMaterial(mat.sku)} title="Eliminar"><i class="ph ph-trash"></i></button>
+								<button class="btn btn-ghost btn-sm btn-icon" on:click|stopPropagation={() => openEdit(mat)} title="Editar"><i class="ph ph-pencil-simple"></i></button>
+								<button class="btn btn-ghost btn-sm btn-icon" on:click|stopPropagation={() => deleteMaterial(mat.sku)} title="Eliminar"><i class="ph ph-trash"></i></button>
 							</div>
 						</td>
 					</tr>
 					<!-- Drilldown row -->
 					{#if drilldownSku === mat.sku}
 						<tr class="drilldown-row">
-							<td colspan="8">
+							<td colspan={isProfesor ? 6 : 8}>
 								<div class="drilldown-content">
 									<div class="drilldown-title"><i class="ph ph-map-pin"></i> Stock por ubicación — {mat.name}</div>
 									{#if mat.stock_by_location?.length === 0}
@@ -351,6 +387,28 @@
 						<input type="file" accept="image/*" class="form-control" on:change={(e) => imageFile = e.target.files[0]} />
 					</div>
 				</div>
+
+				<div class="divider"></div>
+				<div class="flex items-center justify-between mb-2">
+					<div class="sp-section-title">Ubicación y Stock Inicial</div>
+					<button class="btn btn-ghost btn-sm" on:click={() => matStock = [...matStock, { location_id: '', quantity: 0 }]}>+ Agregar Ubicación</button>
+				</div>
+				{#each matStock as s, i}
+					<div class="flex gap-2 mb-2 items-end">
+						<div class="form-group flex-1">
+							<select class="form-control" bind:value={s.location_id}>
+								<option value="">Seleccionar ubicación...</option>
+								{#each locations as loc}<option value={loc.id}>{loc.name}</option>{/each}
+							</select>
+						</div>
+						<div class="form-group" style="width: 100px">
+							<input type="number" step="0.001" class="form-control" bind:value={s.quantity} placeholder="Cant." />
+						</div>
+						{#if matStock.length > 1}
+							<button class="btn btn-ghost btn-sm btn-icon mb-1" on:click={() => matStock = matStock.filter((_, idx) => idx !== i)}>✕</button>
+						{/if}
+					</div>
+				{/each}
 			</div>
 			<div class="modal-footer">
 				<button class="btn btn-ghost" on:click={closeModal}>{$_('common.cancel')}</button>
@@ -446,4 +504,91 @@
 	.mat-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-surface); }
 	.mat-thumb-placeholder { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius); font-size: 1.2rem; color: var(--text-muted); }
 	.mat-thumb-preview { width: 60px; height: 60px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-surface); flex-shrink: 0; }
+
+	.clickable-row { cursor: pointer; transition: background var(--transition); }
+	.clickable-row:hover { background: var(--bg-card-hover); }
+	.clickable-row.selected { background: rgba(99,102,241,0.08); }
+
+	/* Side Panel */
+	.side-panel-backdrop {
+		position: fixed;
+		top: 0; right: 0; bottom: 0; left: 0;
+		background: rgba(0,0,0,0.2);
+		z-index: 100;
+		display: flex; justify-content: flex-end;
+	}
+	.side-panel {
+		width: 400px;
+		background: var(--bg-card);
+		height: 100%;
+		box-shadow: var(--shadow-xl);
+		display: flex; flex-direction: column;
+		border-left: 1px solid var(--border);
+		animation: slideIn 0.3s ease-out;
+	}
+	@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+	.sp-header { padding: var(--space-5); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+	.sp-title { font-weight: 700; font-size: 1.1rem; color: var(--text-primary); }
+	.sp-body { padding: var(--space-6); overflow-y: auto; flex: 1; }
+	.sp-image { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-lg); border: 1px solid var(--border); margin-bottom: var(--space-6); }
+	.sp-image-placeholder { width: 100%; aspect-ratio: 1; background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-6); }
+	.sp-section { margin-bottom: var(--space-6); }
+	.sp-section-title { font-size: 0.75rem; font-weight: 600; color: var(--primary-light); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: var(--space-3); }
+	.sp-spec { font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); white-space: pre-wrap; }
 </style>
+
+{#if selectedMat}
+	<div class="side-panel-backdrop" on:click|self={closeSelected}>
+		<div class="side-panel">
+			<div class="sp-header">
+				<span class="sp-title">Información del Componente</span>
+				<button class="btn btn-ghost btn-sm btn-icon" on:click={closeSelected}>✕</button>
+			</div>
+			<div class="sp-body">
+				{#if selectedMat.image_url}
+					<img src={selectedMat.image_url} alt={selectedMat.name} class="sp-image" />
+				{:else}
+					<div class="sp-image-placeholder"><i class="ph ph-image"></i></div>
+				{/if}
+				
+				<div class="sp-section">
+					<div class="sp-section-title">General</div>
+					<h2 style="font-size:1.25rem; font-weight:800; margin-bottom:4px">{selectedMat.name}</h2>
+					<span class="chip">{selectedMat.sku}</span>
+				</div>
+
+				{#if selectedMat.technical_spec}
+					<div class="sp-section">
+						<div class="sp-section-title">Especificaciones Técnicas</div>
+						<div class="sp-spec">{selectedMat.technical_spec}</div>
+					</div>
+				{/if}
+
+				<div class="sp-section">
+					<div class="sp-section-title">Stock por Ubicación</div>
+					<div class="loc-chips">
+						{#each selectedMat.stock_by_location || [] as sl}
+							<div class="loc-chip">
+								<span class="loc-name">{sl.locations?.name}</span>
+								<span class="loc-qty">{fmt(sl.quantity)} {selectedMat.unit_of_measure}</span>
+							</div>
+						{:else}
+							<p class="text-muted text-sm">Sin stock disponible.</p>
+						{/each}
+					</div>
+				</div>
+
+				{#if !isProfesor}
+					<div class="sp-section">
+						<div class="sp-section-title">Valorización</div>
+						<div class="info-list">
+							<div class="info-row"><span>Costo Promedio (PPP)</span><span class="number-mono font-bold">{fmtMoney(selectedMat.avg_cost)}</span></div>
+							<div class="info-row"><span>Valor en Stock</span><span class="number-mono font-bold text-success">{fmtMoney(getTotalStock(selectedMat) * (selectedMat.avg_cost || 0))}</span></div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	</div>
+{/if}

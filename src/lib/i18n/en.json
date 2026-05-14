@@ -155,7 +155,7 @@
     "roles": {
       "admin": "Administrator",
       "encargado": "Manager",
-      "alumno": "Student"
+      "profesor": "Professor"
     }
   },
   "dashboard": {

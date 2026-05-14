@@ -5,7 +5,7 @@
 	import { invalidateAll, goto } from '$app/navigation';
 
 	export let data;
-	$: ({ orders, suppliers } = data);
+	$: ({ orders, suppliers, courses, workshops, locations, materials } = data);
 
 	const fmtMoney = (n) => n != null ? new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(n) : '—';
 	const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
@@ -17,19 +17,16 @@
 	let showModal = false;
 	let saving = false;
 	let ocForm = { supplier_id: '', notes: '' };
-	let ocItems = [{ material_sku: '', material_name: '', requested_qty: 1, destination_course: '' }];
-	let materials = [];
+	let ocItems = [{ material_sku: '', material_name: '', requested_qty: 1, course_id: '', workshop_id: '', destination_location_id: '' }];
 
 	async function openNew() {
-		const { data: mats } = await supabase.from('materials').select('sku, name, unit_of_measure').order('name');
-		materials = mats ?? [];
 		ocForm = { supplier_id: '', notes: '' };
-		ocItems = [{ material_sku: '', material_name: '', requested_qty: 1, destination_course: '' }];
+		ocItems = [{ material_sku: '', material_name: '', requested_qty: 1, course_id: '', workshop_id: '', destination_location_id: '' }];
 		showModal = true;
 	}
 	function closeModal() { showModal = false; }
 
-	function addItem() { ocItems = [...ocItems, { material_sku: '', material_name: '', requested_qty: 1, destination_course: '' }]; }
+	function addItem() { ocItems = [...ocItems, { material_sku: '', material_name: '', requested_qty: 1, course_id: '', workshop_id: '', destination_location_id: '' }]; }
 	function removeItem(i) { ocItems = ocItems.filter((_, idx) => idx !== i); }
 
 	function onSkuChange(i) {
@@ -45,17 +42,22 @@
 		const map = {};
 		for (const item of ocItems) {
 			if (!item.material_sku) continue;
-			if (!map[item.material_sku]) map[item.material_sku] = { sku: item.material_sku, name: item.material_name, total: 0, destinations: [] };
+			if (!map[item.material_sku]) map[item.material_sku] = { sku: item.material_sku, name: item.material_name, total: 0, destinationNames: [] };
 			map[item.material_sku].total += Number(item.requested_qty) || 0;
-			if (item.destination_course) map[item.material_sku].destinations.push(item.destination_course);
+			const dest = item.destination_location_id 
+				? locations.find(l => l.id === item.destination_location_id)?.name 
+				: (item.workshop_id ? workshops.find(w => w.id === item.workshop_id)?.name : courses.find(c => c.id === item.course_id)?.name);
+			if (dest) map[item.material_sku].destinationNames.push(dest);
 		}
 		return Object.values(map);
 	})();
 
 	let showConsolidated = false;
+	let showConfirm = false;
 
 	async function saveOC() {
 		if (!ocForm.supplier_id || ocItems.some(i => !i.material_sku)) return;
+		if (!showConfirm) { showConfirm = true; return; }
 		saving = true;
 		const { data: oc, error: ocErr } = await supabase
 			.from('purchase_orders')
@@ -68,12 +70,21 @@
 			po_id: oc.id,
 			material_sku: i.material_sku,
 			requested_qty: Number(i.requested_qty),
-			destination_course: i.destination_course
+			course_id: i.course_id || null,
+			workshop_id: i.workshop_id || null,
+			destination_location_id: i.destination_location_id || null
 		}));
 		const { error: itemErr } = await supabase.from('purchase_order_items').insert(items);
 		saving = false;
 		if (itemErr) toast.error('Error en ítems: ' + itemErr.message);
 		else { toast.success('OC creada'); closeModal(); goto('/compras/ordenes/' + oc.id); }
+	}
+
+	async function deleteOrder(id) {
+		if (!confirm(`¿Eliminar la orden OC-${String(id).padStart(5,'0')}? Esta acción no se puede deshacer.`)) return;
+		const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+		if (error) toast.error('No se puede eliminar: puede que tenga ítems o recepciones asociadas.');
+		else { toast.success('Orden eliminada'); invalidateAll(); }
 	}
 </script>
 
@@ -111,7 +122,15 @@
 					<td class="td-muted">{fmtDate(o.created_at)}</td>
 					<td class="text-right number-mono">{fmtMoney(o.total_value)}</td>
 					<td>
-						<a href="/compras/ordenes/{o.id}" class="btn btn-ghost btn-sm">Ver →</a>
+						<div class="flex gap-2 justify-end">
+							{#if o.status === 'sent'}
+								<button class="btn btn-outline btn-sm" on:click={() => goto('/compras/ordenes/' + o.id + '?receive=true')}>Recibir</button>
+							{/if}
+								{#if o.status === 'draft' || o.status === 'sent'}
+									<button class="btn btn-ghost btn-sm btn-icon text-danger" on:click={() => deleteOrder(o.id)}><i class="ph ph-trash"></i></button>
+								{/if}
+								<a href="/compras/ordenes/{o.id}" class="btn btn-ghost btn-sm">Ver →</a>
+						</div>
 					</td>
 				</tr>
 			{:else}
@@ -156,7 +175,7 @@
 				<h4>Ítems de la Orden</h4>
 				<div class="flex gap-2">
 					<button class="btn btn-ghost btn-sm" on:click={() => showConsolidated = !showConsolidated}>
-						{showConsolidated ? 'Ver ítems' : '<i class="ph ph-chart-bar"></i> Vista Consolidada'}
+						{showConsolidated ? 'Ver ítems' : 'Listado'}
 					</button>
 					<button class="btn btn-outline btn-sm" on:click={addItem}>+ Agregar ítem</button>
 				</div>
@@ -170,8 +189,8 @@
 							<span class="chip">{row.sku}</span>
 							<span class="cv-name">{row.name}</span>
 							<span class="cv-total">{row.total} uds. total</span>
-							{#if row.destinations.length > 0}
-								<span class="cv-dests">({row.destinations.join(', ')})</span>
+							{#if row.destinationNames.length > 0}
+								<span class="cv-dests">({row.destinationNames.join(', ')})</span>
 							{/if}
 						</div>
 					{:else}
@@ -194,14 +213,44 @@
 								<input type="number" min="1" class="form-control" bind:value={item.requested_qty} />
 							</div>
 							<div class="form-group" style="flex:1">
-								<label class="form-label">Curso / Destino</label>
-								<input class="form-control" bind:value={item.destination_course} placeholder="Ej: 3° A" />
+								<label class="form-label">Taller</label>
+								<select class="form-control" bind:value={item.workshop_id}>
+									<option value="">Sin taller</option>
+									{#each workshops as w}<option value={w.id}>{w.name}</option>{/each}
+								</select>
+							</div>
+							<div class="form-group" style="flex:1">
+								<label class="form-label">Curso</label>
+								<select class="form-control" bind:value={item.course_id}>
+									<option value="">Sin curso</option>
+									{#each courses as c}<option value={c.id}>{c.name}</option>{/each}
+								</select>
+							</div>
+							<div class="form-group" style="flex:1">
+								<label class="form-label">Destino</label>
+								<select class="form-control" bind:value={item.destination_location_id}>
+									<option value="">Seleccionar...</option>
+									{#each locations as loc}<option value={loc.id}>{loc.name}</option>{/each}
+								</select>
 							</div>
 							{#if ocItems.length > 1}
 								<button class="btn btn-ghost btn-sm btn-icon" style="margin-top:1.6rem" on:click={() => removeItem(i)}>✕</button>
 							{/if}
 						</div>
 					{/each}
+				</div>
+			{/if}
+			
+			{#if showConfirm}
+				<div class="confirmation-overlay">
+					<div class="confirmation-card">
+						<h4>Confirmar Orden de Compra</h4>
+						<p>¿Estás seguro que deseas crear esta orden de compra para <strong>{suppliers.find(s => s.id === ocForm.supplier_id)?.razon_social}</strong>?</p>
+						<div class="flex gap-3 justify-end mt-4">
+							<button class="btn btn-ghost" on:click={() => showConfirm = false}>Revisar</button>
+							<button class="btn btn-primary" on:click={saveOC}>Confirmar y Crear</button>
+						</div>
+					</div>
 				</div>
 			{/if}
 		</div>
@@ -237,4 +286,23 @@
 	.cv-name { flex: 1; font-size: 0.875rem; color: var(--text-primary); }
 	.cv-total { font-weight: 700; color: var(--secondary); font-size: 0.875rem; }
 	.cv-dests { font-size: 0.78rem; color: var(--text-muted); }
+
+	.confirmation-overlay {
+		position: absolute;
+		top: 0; left: 0; right: 0; bottom: 0;
+		background: rgba(0,0,0,0.4);
+		backdrop-filter: blur(2px);
+		display: flex; align-items: center; justify-content: center;
+		z-index: 100;
+		border-radius: var(--radius-lg);
+	}
+	.confirmation-card {
+		background: var(--bg-card);
+		padding: var(--space-6);
+		border-radius: var(--radius-lg);
+		box-shadow: var(--shadow-lg);
+		max-width: 400px;
+		width: 90%;
+		border: 1px solid var(--border);
+	}
 </style>

@@ -6,8 +6,9 @@
     "suppliers": "Proveedores",
     "orders": "Órdenes de Compra",
     "projects": "Proyectos",
-    "delivery": "Delivery",
+    "delivery": "Entregas",
     "users": "Usuarios",
+    "settings": "Configuración",
     "profile": "Mi Perfil",
     "logout": "Cerrar sesión"
   },
@@ -114,6 +115,21 @@
       "sent": "Enviada",
       "received": "Recibida",
       "cancelled": "Cancelada"
+    },
+    "budgets": {
+      "title": "Presupuestos",
+      "newBudget": "Nuevo Presupuesto",
+      "compare": "Comparar Proveedores",
+      "cheaper": "Más económico",
+      "generateOrder": "Generar Orden de Compra",
+      "supplierA": "Proveedor A",
+      "supplierB": "Proveedor B"
+    },
+    "workshops": {
+      "title": "Talleres",
+      "course": "Curso",
+      "workshop": "Taller",
+      "manage": "Gestionar Talleres"
     }
   },
   "projects": {
@@ -136,6 +152,7 @@
     "responsible": "Responsable",
     "project": "Proyecto",
     "deliveredAt": "Fecha de Entrega",
+    "receivedBy": "Recibido por",
     "importFromProject": "Importar desde Proyecto",
     "confirmDelivery": "Confirmar Entrega",
     "generateRemito": "Generar Remito",
@@ -155,7 +172,7 @@
     "roles": {
       "admin": "Administrador",
       "encargado": "Encargado",
-      "alumno": "Alumno"
+      "profesor": "Profesor"
     }
   },
   "dashboard": {

@@ -15,7 +15,7 @@
 	let showModal = false;
 	let saving = false;
 
-	let form = { responsible_id: '', project_id: '', notes: '' };
+	let form = { responsible_id: '', project_id: '', notes: '', recipient_id: '', delivery_date: new Date().toISOString().split('T')[0] };
 	let deliveryItems = [{ material_sku: '', material_name: '', location_id: '', quantity: 1 }];
 	let materials = [];
 	let locations = [];
@@ -33,7 +33,7 @@
 		locations = locs.data ?? [];
 		projects = projs.data ?? [];
 		users = usrs.data ?? [];
-		form = { responsible_id: '', project_id: '', notes: '' };
+		form = { responsible_id: '', project_id: '', notes: '', recipient_id: '', delivery_date: new Date().toISOString().split('T')[0] };
 		deliveryItems = [{ material_sku: '', material_name: '', location_id: '', quantity: 1 }];
 		showModal = true;
 	}
@@ -91,6 +91,8 @@
 			.insert({
 				responsible_id: form.responsible_id,
 				project_id: form.project_id || null,
+				recipient_id: form.recipient_id || null,
+				delivery_date: form.delivery_date || null,
 				notes: form.notes,
 				status: 'pending'
 			})
@@ -191,6 +193,17 @@
 							</button>
 						{/if}
 					</div>
+				</div>
+				<div class="form-group">
+					<label class="form-label" for="d-recip">{$_('delivery.receivedBy')}</label>
+					<select id="d-recip" class="form-control" bind:value={form.recipient_id}>
+						<option value="">Seleccionar receptor...</option>
+						{#each users as u}<option value={u.id}>{u.full_name}</option>{/each}
+					</select>
+				</div>
+				<div class="form-group">
+					<label class="form-label" for="d-date">{$_('delivery.deliveredAt')}</label>
+					<input id="d-date" type="date" class="form-control" bind:value={form.delivery_date} />
 				</div>
 				<div class="form-group" style="grid-column:1/-1">
 					<label class="form-label" for="d-notes">Observaciones</label>

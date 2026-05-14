@@ -27,7 +27,7 @@ export async function load({ locals, url }) {
 			id: session.user.id,
 			email: session.user.email,
 			full_name: session.user.email,
-			role: 'alumno'
+			role: 'profesor'
 		}
 	};
 }

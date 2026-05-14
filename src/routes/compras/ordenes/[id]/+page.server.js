@@ -11,7 +11,10 @@ export async function load({ locals, params }) {
 			suppliers(id, razon_social, cuit, contact_info),
 			purchase_order_items(
 				id, material_sku, requested_qty, received_qty, unit_price, subtotal, destination_course,
-				materials(name, unit_of_measure, avg_cost)
+				materials(name, unit_of_measure, avg_cost),
+				workshops(name),
+				courses(name),
+				locations:destination_location_id(name)
 			)
 		`)
 		.eq('id', params.id)

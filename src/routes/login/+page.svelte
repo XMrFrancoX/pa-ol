@@ -176,8 +176,8 @@
 						<div class="success-icon"><i class="ph ph-check-circle"></i></div>
 						<h3>¡Cuenta creada!</h3>
 						<p>
-							Tu cuenta fue registrada con el rol <strong>Alumno</strong>.<br />
-							Un administrador puede cambiar tu rol desde la sección Usuarios.
+							Tu cuenta fue registrada con el rol <strong>Profesor</strong>.<br />
+							Debes contactar a un administrador para que te asigne un rol superior si es necesario.
 						</p>
 						{#if regEmail}
 							<p class="hint-small">Si Supabase requiere verificación, revisá tu email <strong>{regEmail}</strong>.</p>
@@ -246,7 +246,7 @@
 
 					<div class="alert alert-info mt-4" style="font-size:0.8rem">
 						<span><i class="ph ph-info"></i></span>
-						<span>Tu cuenta se crea con rol <strong>Alumno</strong>. El administrador puede asignarte un rol desde el panel de Usuarios.</span>
+						<span>Tu cuenta se crea con rol <strong>Profesor</strong>. El administrador puede asignarte un rol desde el panel de Usuarios.</span>
 					</div>
 
 					<button

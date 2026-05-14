@@ -5,7 +5,7 @@
 	import { invalidateAll, goto } from '$app/navigation';
 
 	export let data;
-	$: ({ projects } = data);
+	$: ({ projects, workshops, courses, locations } = data);
 
 	const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
 	const statusBadge = { active: 'badge-success', archived: 'badge-neutral', draft: 'badge-warning' };
@@ -13,7 +13,7 @@
 
 	let showModal = false;
 	let saving = false;
-	let form = { name: '', description: '', status: 'active' };
+	let form = { name: '', description: '', workshop_id: '', course_id: '', destination_location_id: '' };
 	let bomItems = [{ material_sku: '', material_name: '', quantity_needed: 1 }];
 	let materials = [];
 	let editingProject = null;
@@ -22,7 +22,7 @@
 		const { data: mats } = await supabase.from('materials').select('sku, name, unit_of_measure').order('name');
 		materials = mats ?? [];
 		editingProject = null;
-		form = { name: '', description: '', status: 'active' };
+		form = { name: '', description: '', workshop_id: '', course_id: '', destination_location_id: '' };
 		bomItems = [{ material_sku: '', material_name: '', quantity_needed: 1 }];
 		showModal = true;
 	}
@@ -40,7 +40,13 @@
 		saving = true;
 		const { data: proj, error: pErr } = await supabase
 			.from('projects')
-			.insert({ name: form.name, description: form.description, status: form.status })
+			.insert({ 
+				name: form.name, 
+				description: form.description, 
+				workshop_id: form.workshop_id || null,
+				course_id: form.course_id || null,
+				destination_location_id: form.destination_location_id || null
+			})
 			.select()
 			.single();
 		if (pErr) { toast.error('Error: ' + pErr.message); saving = false; return; }
@@ -54,6 +60,12 @@
 		saving = false;
 		if (bErr) toast.error('Error en BOM: ' + bErr.message);
 		else { toast.success('Proyecto creado'); closeModal(); goto('/proyectos/' + proj.id); }
+	}
+	async function deleteProject(id) {
+		if (!confirm('¿Eliminar este proyecto? Se borrarán también sus registros de materiales (BOM).')) return;
+		const { error } = await supabase.from('projects').delete().eq('id', id);
+		if (error) toast.error(error.message);
+		else { toast.success('Proyecto eliminado'); invalidateAll(); }
 	}
 </script>
 
@@ -77,6 +89,13 @@
 				<span class="pc-date">{fmtDate(p.created_at)}</span>
 			</div>
 			<h3 class="pc-name">{p.name}</h3>
+			{#if p.courses || p.workshops || p.locations}
+				<div class="pc-meta">
+					{#if p.workshops}<span class="pc-tag"><i class="ph ph-factory"></i> {p.workshops.name}</span>{/if}
+					{#if p.courses}<span class="pc-tag"><i class="ph ph-graduation-cap"></i> {p.courses.name}</span>{/if}
+					{#if p.locations}<span class="pc-tag"><i class="ph ph-map-pin"></i> {p.locations.name}</span>{/if}
+				</div>
+			{/if}
 			{#if p.description}
 				<p class="pc-desc">{p.description}</p>
 			{/if}
@@ -112,6 +131,27 @@
 				<div class="form-group" style="grid-column:1/-1">
 					<label class="form-label" for="p-desc">Descripción</label>
 					<textarea id="p-desc" class="form-control" bind:value={form.description} placeholder="Descripción del proyecto..."></textarea>
+				</div>
+				<div class="form-group">
+					<label class="form-label" for="p-workshop">Taller</label>
+					<select id="p-workshop" class="form-control" bind:value={form.workshop_id}>
+						<option value="">Sin taller</option>
+						{#each workshops as w}<option value={w.id}>{w.name}</option>{/each}
+					</select>
+				</div>
+				<div class="form-group">
+					<label class="form-label" for="p-course">Curso</label>
+					<select id="p-course" class="form-control" bind:value={form.course_id}>
+						<option value="">Sin curso</option>
+						{#each courses as c}<option value={c.id}>{c.name}</option>{/each}
+					</select>
+				</div>
+				<div class="form-group">
+					<label class="form-label" for="p-dest">Destino (Ubicación)</label>
+					<select id="p-dest" class="form-control" bind:value={form.destination_location_id}>
+						<option value="">Seleccionar...</option>
+						{#each locations as loc}<option value={loc.id}>{loc.name}</option>{/each}
+					</select>
 				</div>
 			</div>
 
@@ -176,6 +216,8 @@
 	.pc-date { font-size: 0.75rem; color: var(--text-muted); }
 	.pc-name { font-size: 1rem; font-weight: 700; color: var(--text-primary); }
 	.pc-desc { font-size: 0.8rem; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+	.pc-meta { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-1); }
+	.pc-tag { font-size: 0.7rem; color: var(--primary-light); background: rgba(99,102,241,0.08); padding: 2px 6px; border-radius: 4px; display: flex; align-items: center; gap: 4px; }
 	.pc-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
 	.pc-arrow { color: var(--primary-light); font-size: 1.2rem; }
 

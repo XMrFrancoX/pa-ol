@@ -17,11 +17,13 @@
 			children: [
 				{ href: '/compras/ordenes', labelKey: 'nav.orders', icon: 'ph-receipt' },
 				{ href: '/compras/proveedores', labelKey: 'nav.suppliers', icon: 'ph-buildings' },
+				{ href: '/compras/presupuestos', labelKey: 'purchases.budgets.title', icon: 'ph-scales' },
 			]
 		},
 		{ href: '/proyectos', icon: 'ph-gear', labelKey: 'nav.projects' },
 		{ href: '/delivery', icon: 'ph-truck', labelKey: 'nav.delivery' },
 		{ href: '/usuarios', icon: 'ph-users', labelKey: 'nav.users', roles: ['admin'] },
+		{ href: '/configuracion', icon: 'ph-wrench', labelKey: 'nav.settings', roles: ['admin'] },
 	];
 
 	let expandedGroups = { 'nav.purchases': true };
@@ -47,16 +49,16 @@
 
 	$: roleLabel = profile?.role === 'admin' ? $_('users.roles.admin')
 		: profile?.role === 'encargado' ? $_('users.roles.encargado')
-		: $_('users.roles.alumno');
+		: $_('users.roles.profesor');
 </script>
 
 <aside class="sidebar">
 	<!-- Logo -->
 	<div class="sidebar-logo">
-		<div class="logo-icon"><i class="ph ph-package"></i></div>
+		<img src="https://www.philips.edu.ar/favicon.png" alt="Escuela Philips" class="logo-img" />
 		<div class="logo-text">
 			<span class="logo-title">Pañol</span>
-			<span class="logo-sub">Sistema de Inventario</span>
+			<span class="logo-sub">Escuela Philips</span>
 		</div>
 	</div>
 
@@ -144,17 +146,11 @@
 		border-bottom: 1px solid var(--sidebar-border);
 		flex-shrink: 0;
 	}
-	.logo-icon {
+	.logo-img {
 		width: 38px;
 		height: 38px;
-		background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-		border-radius: 10px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		font-size: 1.2rem;
+		object-fit: contain;
 		flex-shrink: 0;
-		box-shadow: 0 4px 12px var(--primary-glow);
 	}
 	.logo-title {
 		display: block;

@@ -8,17 +8,17 @@
 	$: ({ profiles } = data);
 
 	const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-AR') : '—';
-	const roleBadge = { admin: 'badge-danger', encargado: 'badge-warning', alumno: 'badge-info' };
-	const roleLabel = { admin: 'Administrador', encargado: 'Encargado', alumno: 'Alumno' };
+	const roleBadge = { admin: 'badge-danger', encargado: 'badge-warning', profesor: 'badge-info' };
+	const roleLabel = { admin: 'Administrador', encargado: 'Encargado', profesor: 'Profesor' };
 
 	let showModal = false;
 	let saving = false;
 	let editingUser = null;
-	let form = { full_name: '', email: '', role: 'alumno', password: '' };
+	let form = { full_name: '', email: '', role: 'profesor', password: '' };
 
 	function openEdit(u) {
 		editingUser = u;
-		form = { full_name: u.full_name ?? '', email: u.email ?? '', role: u.role ?? 'alumno', password: '' };
+		form = { full_name: u.full_name ?? '', email: u.email ?? '', role: u.role ?? 'profesor', password: '' };
 		showModal = true;
 	}
 	function closeModal() { showModal = false; }
@@ -60,7 +60,7 @@
 
 <!-- Stats -->
 <div class="stats-grid mb-6">
-	{#each [['Todos', profiles.length, 'badge-neutral', 'all'], ['Administradores', profiles.filter(p=>p.role==='admin').length, 'badge-danger', 'admin'], ['Encargados', profiles.filter(p=>p.role==='encargado').length, 'badge-warning', 'encargado'], ['Alumnos', profiles.filter(p=>p.role==='alumno').length, 'badge-info', 'alumno']] as [label, count, badge, role]}
+	{#each [['Todos', profiles.length, 'badge-neutral', 'all'], ['Administradores', profiles.filter(p=>p.role==='admin').length, 'badge-danger', 'admin'], ['Encargados', profiles.filter(p=>p.role==='encargado').length, 'badge-warning', 'encargado'], ['Profesores', profiles.filter(p=>p.role==='profesor').length, 'badge-info', 'profesor']] as [label, count, badge, role]}
 		<button
 			class="role-stat"
 			class:active={filterRole === role}
@@ -126,12 +126,13 @@
 			<div class="form-group mt-4">
 				<label class="form-label" for="u-role">Rol</label>
 				<select id="u-role" class="form-control" bind:value={form.role}>
-					<option value="alumno">Alumno</option>
+					<option value="profesor">Profesor</option>
 					<option value="encargado">Encargado</option>
 					<option value="admin">Administrador</option>
 				</select>
-				<div class="form-hint">
-					Alumno: solo lectura · Encargado: operaciones · Admin: configuración total
+				<div class="alert alert-info py-2 mt-4 text-xs">
+					<span><i class="ph ph-info"></i></span>
+					<span>Profesor: solo lectura · Encargado: operaciones · Admin: configuración total</span>
 				</div>
 			</div>
 		</div>

@@ -24,8 +24,8 @@
 		receiveData = {};
 		for (const item of order.purchase_order_items) {
 			receiveData[item.id] = {
-				received_qty: item.requested_qty,
-				unit_price: item.materials?.avg_cost ?? 0,
+				received_qty: item.received_qty ?? item.requested_qty,
+				unit_price: item.unit_price ?? item.materials?.avg_cost ?? 0,
 				location_id: ''
 			};
 		}
@@ -33,11 +33,24 @@
 	}
 	function closeReceive() { showReceiveModal = false; }
 
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	onMount(() => {
+		if ($page.url.searchParams.get('receive') === 'true' && (order.status === 'sent' || order.status === 'draft')) {
+			openReceive();
+		}
+	});
+
 	$: orderTotal = Object.values(receiveData).reduce((sum, r) => {
 		return sum + (Number(r.received_qty) || 0) * (Number(r.unit_price) || 0);
 	}, 0);
 
 	async function confirmReceive() {
+		// Validation: Ensure all items have a location
+		if (Object.values(receiveData).some(r => !r.location_id)) {
+			toast.error('Debes seleccionar una ubicación para todos los ítems para poder ingresar el stock.');
+			return;
+		}
 		receiving = true;
 		try {
 			// 1. Update each purchase_order_item
@@ -124,6 +137,7 @@
 		toast.success('Estado actualizado');
 		invalidateAll();
 	}
+	$: isProfesor = data.profile?.role === 'profesor';
 </script>
 
 <svelte:head><title>OC-{String(order.id).padStart(5,'0')} — Pañol</title></svelte:head>
@@ -139,11 +153,13 @@
 		</div>
 	</div>
 	<div class="page-actions">
-		{#if order.status === 'draft'}
-			<button class="btn btn-ghost" on:click={() => updateStatus('sent')}><i class="ph ph-paper-plane-tilt"></i> Marcar como Enviada</button>
-			<button id="receive-btn" class="btn btn-primary" on:click={openReceive}><i class="ph ph-download-simple"></i> Recibir Mercadería</button>
-		{:else if order.status === 'sent'}
-			<button id="receive-btn" class="btn btn-primary" on:click={openReceive}><i class="ph ph-download-simple"></i> Recibir Mercadería</button>
+		{#if !isProfesor}
+			{#if order.status === 'draft'}
+				<button class="btn btn-ghost" on:click={() => updateStatus('sent')}><i class="ph ph-paper-plane-tilt"></i> Marcar como Enviada</button>
+				<button id="receive-btn" class="btn btn-primary" on:click={openReceive}><i class="ph ph-download-simple"></i> Recibir Mercadería</button>
+			{:else if order.status === 'sent'}
+				<button id="receive-btn" class="btn btn-primary" on:click={openReceive}><i class="ph ph-download-simple"></i> Recibir Mercadería</button>
+			{/if}
 		{/if}
 	</div>
 </div>
@@ -164,7 +180,9 @@
 		<div class="info-list">
 			<div class="info-row"><span class="info-label">Fecha OC</span><span>{fmtDate(order.created_at)}</span></div>
 			<div class="info-row"><span class="info-label">Fecha Recepción</span><span>{fmtDate(order.received_at)}</span></div>
-			<div class="info-row"><span class="info-label">Total</span><span class="number-mono font-bold text-success">{fmtMoney(order.total_value)}</span></div>
+			{#if !isProfesor}
+				<div class="info-row"><span class="info-label">Total</span><span class="number-mono font-bold text-success">{fmtMoney(order.total_value)}</span></div>
+			{/if}
 			{#if order.notes}<div class="info-row"><span class="info-label">Notas</span><span>{order.notes}</span></div>{/if}
 		</div>
 	</div>
@@ -184,8 +202,10 @@
 					<th>Destino/Curso</th>
 					<th style="text-align:right">Cant. Pedida</th>
 					<th style="text-align:right">Cant. Recibida</th>
-					<th style="text-align:right">Precio Unit.</th>
-					<th style="text-align:right">Subtotal</th>
+					{#if !isProfesor}
+						<th style="text-align:right">Precio Unit.</th>
+						<th style="text-align:right">Subtotal</th>
+					{/if}
 				</tr>
 			</thead>
 			<tbody>
@@ -193,7 +213,12 @@
 					<tr>
 						<td><span class="chip">{item.material_sku}</span></td>
 						<td class="font-semibold">{item.materials?.name ?? '—'}</td>
-						<td class="td-muted">{item.destination_course || '—'}</td>
+						<td class="td-muted">
+							{#if item.workshops}<span class="badge badge-info mr-1" style="font-size:0.65rem">{item.workshops.name}</span>{/if}
+							{#if item.courses}<span class="badge badge-neutral mr-1" style="font-size:0.65rem">{item.courses.name}</span>{/if}
+							{#if item.locations}<span class="badge badge-success mr-1" style="font-size:0.65rem">{item.locations.name}</span>{/if}
+							<span>{item.destination_course || ''}</span>
+						</td>
 						<td class="text-right">{item.requested_qty} {item.materials?.unit_of_measure ?? ''}</td>
 						<td class="text-right">
 							{#if item.received_qty != null}
@@ -202,12 +227,14 @@
 								<span class="text-muted">—</span>
 							{/if}
 						</td>
-						<td class="text-right number-mono">{fmtMoney(item.unit_price)}</td>
-						<td class="text-right number-mono font-semibold">{fmtMoney(item.subtotal)}</td>
+						{#if !isProfesor}
+							<td class="text-right number-mono">{fmtMoney(item.unit_price)}</td>
+							<td class="text-right number-mono font-semibold">{fmtMoney(item.subtotal)}</td>
+						{/if}
 					</tr>
 				{/each}
 			</tbody>
-			{#if order.total_value}
+			{#if order.total_value && !isProfesor}
 				<tfoot>
 					<tr style="background: var(--bg-surface);">
 						<td colspan="6" class="text-right font-semibold" style="padding: 12px 16px; color: var(--text-secondary);">Total OC:</td>
@@ -251,9 +278,9 @@
 							<input type="number" min="0" step="0.01" class="form-control" bind:value={receiveData[item.id].unit_price} />
 						</div>
 						<div class="form-group">
-							<label class="form-label">Ingresar a Ubicación</label>
-							<select class="form-control" bind:value={receiveData[item.id].location_id}>
-								<option value="">Sin ubicación</option>
+							<label class="form-label">Ingresar a Ubicación *</label>
+							<select class="form-control" bind:value={receiveData[item.id].location_id} required>
+								<option value="">Seleccionar ubicación...</option>
 								{#each locations as loc}<option value={loc.id}>{loc.name}</option>{/each}
 							</select>
 						</div>
