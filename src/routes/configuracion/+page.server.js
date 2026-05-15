@@ -1,8 +1,8 @@
 import { redirect } from '@sveltejs/kit';
 
 export async function load({ locals }) {
-	const { data: { session } } = await locals.supabase.auth.getSession();
-	if (!session) throw redirect(303, '/login');
+	const { data: { user } } = await locals.supabase.auth.getUser();
+	if (!user) throw redirect(303, '/login');
 
 	const [
 		{ data: courses },

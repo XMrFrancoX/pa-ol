@@ -1,16 +1,16 @@
 import { redirect } from '@sveltejs/kit';
 
 export async function load({ locals, url }) {
-	const { data: { session } } = await locals.supabase.auth.getSession();
+	const { data: { user } } = await locals.supabase.auth.getUser();
 
 	// Public routes
 	const publicPaths = ['/login'];
 	if (publicPaths.includes(url.pathname)) {
-		if (session) throw redirect(303, '/dashboard');
+		if (user) throw redirect(303, '/dashboard');
 		return {};
 	}
 
-	if (!session) {
+	if (!user) {
 		throw redirect(303, '/login');
 	}
 
@@ -18,15 +18,15 @@ export async function load({ locals, url }) {
 	const { data: profile } = await locals.supabase
 		.from('user_profiles')
 		.select('*')
-		.eq('id', session.user.id)
+		.eq('id', user.id)
 		.single();
 
 	return {
-		session,
+		user,
 		profile: profile ?? {
-			id: session.user.id,
-			email: session.user.email,
-			full_name: session.user.email,
+			id: user.id,
+			email: user.email,
+			full_name: user.email,
 			role: 'profesor'
 		}
 	};

@@ -1,8 +1,8 @@
 import { redirect, error } from '@sveltejs/kit';
 
 export async function load({ locals, params }) {
-	const { data: { session } } = await locals.supabase.auth.getSession();
-	if (!session) throw redirect(303, '/login');
+	const { data: { user } } = await locals.supabase.auth.getUser();
+	if (!user) throw redirect(303, '/login');
 
 	const { data: order, error: err } = await locals.supabase
 		.from('purchase_orders')
