@@ -11,8 +11,16 @@
 
 	setupI18n();
 
+	let isSidebarOpen = false;
+
 	$: isPublicRoute = $page.url.pathname === '/login';
 	$: profile = data?.profile ?? null;
+
+	// Close sidebar automatically on navigation
+	$: {
+		const path = $page.url.pathname;
+		isSidebarOpen = false;
+	}
 </script>
 
 {#if $isLoading}
@@ -23,11 +31,17 @@
 	<slot />
 {:else}
 	<div class="app-layout">
-		<Sidebar {profile} />
+		<Sidebar {profile} bind:isOpen={isSidebarOpen} />
+		{#if isSidebarOpen}
+			<button class="sidebar-backdrop" on:click={() => isSidebarOpen = false} aria-label="Cerrar menú"></button>
+		{/if}
 		<div class="main-content">
 			<!-- Top Bar -->
 			<header class="topbar">
 				<div class="topbar-left">
+					<button class="menu-btn" on:click={() => isSidebarOpen = true} aria-label="Abrir menú">
+						<i class="ph ph-list"></i>
+					</button>
 					<div class="breadcrumb-area">
 						<!-- slot for page-specific breadcrumb -->
 					</div>

@@ -7,6 +7,7 @@
 	import { toast } from '$lib/stores/toast.js';
 
 	export let profile = null;
+	export let isOpen = false;
 
 	const navItems = [
 		{ href: '/dashboard', icon: 'ph-squares-four', labelKey: 'nav.dashboard' },
@@ -52,7 +53,7 @@
 		: $_('users.roles.profesor');
 </script>
 
-<aside class="sidebar">
+<aside class="sidebar" class:open={isOpen}>
 	<!-- Logo -->
 	<div class="sidebar-logo">
 		<img src="https://www.philips.edu.ar/favicon.png" alt="Escuela Philips" class="logo-img" />
@@ -60,6 +61,9 @@
 			<span class="logo-title">Pañol</span>
 			<span class="logo-sub">Escuela Philips</span>
 		</div>
+		<button class="sidebar-close-btn" on:click={() => isOpen = false} aria-label="Cerrar menú">
+			<i class="ph ph-x"></i>
+		</button>
 	</div>
 
 	<!-- Nav -->
@@ -322,7 +326,35 @@
 		color: var(--danger);
 	}
 
+	.sidebar-close-btn {
+		display: none;
+	}
+
 	@media (max-width: 768px) {
-		.sidebar { transform: translateX(-100%); }
+		.sidebar {
+			transform: translateX(-100%);
+			transition: transform var(--transition);
+		}
+		.sidebar.open {
+			transform: translateX(0);
+		}
+		.sidebar-close-btn {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: transparent;
+			border: none;
+			color: var(--text-muted);
+			font-size: 1.25rem;
+			cursor: pointer;
+			padding: 4px;
+			margin-left: auto;
+			border-radius: var(--radius-sm);
+			transition: color var(--transition), background var(--transition);
+		}
+		.sidebar-close-btn:hover {
+			color: var(--text-primary);
+			background: rgba(255, 255, 255, 0.05);
+		}
 	}
 </style>

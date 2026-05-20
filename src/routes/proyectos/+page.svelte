@@ -223,4 +223,26 @@
 
 	.bom-row { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) 0; border-bottom: 1px solid var(--border); }
 	.bom-row:last-child { border-bottom: none; }
+
+	@media (max-width: 768px) {
+		.bom-row {
+			flex-direction: column;
+			gap: var(--space-3);
+			padding: var(--space-4);
+			background: var(--bg-surface);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			margin-bottom: var(--space-3);
+		}
+		.bom-row > .form-group {
+			width: 100% !important;
+			flex: none !important;
+		}
+		.bom-row button {
+			align-self: flex-end;
+			margin-top: var(--space-2) !important;
+			width: 100%;
+			justify-content: center;
+		}
+	}
 </style>

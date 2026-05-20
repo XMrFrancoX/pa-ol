@@ -462,6 +462,18 @@
 	.vb-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 	.vb-sub { font-size: 0.78rem; color: var(--text-muted); }
 
+	@media (max-width: 600px) {
+		.valuation-banner {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: var(--space-2);
+			padding: var(--space-4);
+		}
+		.vb-value {
+			font-size: 1.3rem;
+		}
+	}
+
 	.stock-total-btn {
 		display: inline-flex;
 		align-items: center;
@@ -518,7 +530,8 @@
 		display: flex; justify-content: flex-end;
 	}
 	.side-panel {
-		width: 400px;
+		width: 420px;
+		max-width: 100%;
 		background: var(--bg-card);
 		height: 100%;
 		box-shadow: var(--shadow-xl);
